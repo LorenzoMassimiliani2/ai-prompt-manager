@@ -1,6 +1,6 @@
 <script setup>
-import { Head, Link, useForm, router } from '@inertiajs/vue3'
-import { ref, watch, onMounted } from 'vue'
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
+import { ref, watch, onMounted, computed } from 'vue'
 
 const props = defineProps({
   prompt: Object,
@@ -24,11 +24,27 @@ const form = useForm({
 })
 
 const save = () => {
-  form.put(route('prompts.update', props.prompt.id), {
+  // 1. Prepara i query parameters da inoltrare al controller
+  //    (usiamo i computed 'from' e 'folder' che hai già definito)
+  const queryParams = {}
+  if (from.value) {
+    queryParams.from = from.value
+  }
+  if (folder.value) {
+    queryParams.folder = folder.value
+  }
+
+  // 2. Invia il form includendo i parametri
+  form.put(route('prompts.update', {
+    prompt: props.prompt.id, // Parametro della rotta
+    ...queryParams          // Parametri query: ?from=...&folder=...
+  }), {
     preserveScroll: true,
     onSuccess: () => {
       editMode.value = false
-      pushToast('Salvato ✅')
+      // La toast non è necessaria se il controller fa un redirect
+      // Ma la lasciamo, male non fa (verrà mostrata nella pagina di destinazione)
+      pushToast('Salvato ✅') 
     }
   })
 }
@@ -114,6 +130,44 @@ function openService(svc) {
     window.open(svc.base_url, '_blank', 'noopener')
   }
 }
+
+const page = usePage()
+// 1. Creiamo un oggetto reattivo per i parametri dell'URL
+const urlParams = computed(() => {
+  // page.url è una stringa tipo "/prompts/10?folder=3&from=dashboard"
+  // Estraiamo solo la parte della query string
+  const queryString = page.url.split('?')[1] || ''
+  return new URLSearchParams(queryString)
+})
+
+// 2. Estraiamo i valori 'from' e 'folder' in modo pulito
+const from = computed(() => urlParams.value.get('from'))
+const folder = computed(() => urlParams.value.get('folder'))
+
+// 3. Costruiamo il backUrl in modo condizionale
+const backUrl = computed(() => {
+  
+  if (from.value === 'dashboard') {
+    // Se 'from' è 'dashboard', prepariamo i parametri
+    const params = {}
+    
+    // Aggiungiamo 'folder' ai parametri SOLO se esiste nell'URL
+    if (folder.value) {
+      params.folder = folder.value
+    }
+    
+    // La rotta sarà 'dashboard' con eventuali parametri (es. { folder: 3 })
+    return route('dashboard', params)
+  }
+
+  if (from.value === 'prompts') {
+    // Se 'from' è 'prompts', torna all'indice (senza parametri)
+    return route('prompts.index')
+  }
+
+  // Fallback: se 'from' non è presente, torna a una destinazione di default
+  return route('prompts.index') 
+})
 </script>
 
 <template>
@@ -144,7 +198,13 @@ function openService(svc) {
         </div>
 
         <div class="flex gap-2 shrink-0">
-          <Link :href="route('prompts.index')" class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">Indietro</Link>
+          <Link
+            :href="backUrl"
+            class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2"
+          >
+            <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-60"><path d="M15 18l-6-6 6-6" fill="currentColor" /></svg>
+            <span>Indietro</span>
+          </Link>
           <button v-if="can?.update" @click="editMode = !editMode"
             class="px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
             {{ editMode ? 'Annulla' : 'Modifica' }}

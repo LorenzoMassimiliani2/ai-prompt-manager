@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm, router, } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
+import NavTabs from '@/Components/NavTabs.vue'  
 const props = defineProps({ prompts:Object, filters:Object, tags:Array, can:Object })
 
 const form = useForm({
@@ -68,7 +69,10 @@ function destroyTag(id){
 
 <template>
   <Head title="Prompts" />
-  <div class="max-w-6xl mx-auto p-6 space-y-6">
+   <div class="flex items-center justify-between">
+      <NavTabs />
+    </div>
+  <div class="max-w-7xl mx-auto p-6 space-y-6">
     <div class="flex flex-col md:flex-row md:items-center gap-3">
       <form @submit.prevent="search" class="flex-1">
         <input v-model="form.q" placeholder="Cerca prompt..." class="w-full border rounded-lg px-3 py-2" />
@@ -82,7 +86,7 @@ function destroyTag(id){
         </select>
     </div>
       <div v-if="can?.create">
-        <Link :href="route('prompts.create')" class="bg-green-600 text-white px-4 py-2 rounded-lg">+</Link>
+        <Link :href="route('prompts.create', { from: 'prompts' })" class="bg-green-600 text-white px-4 py-2 rounded-lg">+</Link>
       </div>
     </div>
 
@@ -103,7 +107,7 @@ function destroyTag(id){
         Gestisci tag
       </button>
       <div v-if="props.auth?.userId">
-        <Link :href="route('prompts.create')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Nuovo</Link>
+        <Link :href="route('prompts.create', { from: 'prompts' })" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Nuovo</Link>
       </div>
     </div>
 
@@ -151,9 +155,9 @@ function destroyTag(id){
     </div>
 
     <!-- Pagination -->
-    <div class="mt-6 flex justify-center gap-2" v-if="prompts.links">
+    <div v-if="prompts.links && prompts.links.length > 12" class="mt-6 flex justify-center gap-2">
       <Link v-for="l in prompts.links" :key="l.url + l.label" :href="l.url || '#'" v-html="l.label"
-        :class="['px-3 py-1 rounded', l.active ? 'bg-indigo-600 text-white' : 'bg-gray-100']" />
+      :class="['px-3 py-1 rounded', l.active ? 'bg-indigo-600 text-white' : 'bg-gray-100']" />
     </div>
   </div>
 

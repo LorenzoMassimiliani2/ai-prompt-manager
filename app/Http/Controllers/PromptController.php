@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Prompt;
 use App\Models\Tag;
 use App\Models\Service;
+use App\Models\Folder; 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -58,7 +59,33 @@ class PromptController extends Controller
         $prompt = Prompt::create($data);
         $prompt->tags()->sync($this->syncTags($request->input('tags', [])));
 
-        return redirect()->route('prompts.index')->with('success', 'Prompt creato!');
+        $folderId = (int) $request->query('folder');
+        if ($folderId) {
+            $folder = Folder::where('user_id', $request->user()->id)->find($folderId);
+            if ($folder) {
+                $folder->prompts()->syncWithoutDetaching([$prompt->id => ['user_id'=>$request->user()->id]]);
+            }
+        }
+
+       // ✅ redirect dinamico
+        $from = $request->input('from') ?? $request->query('from');
+
+        $dashboardParams = [];
+        if ($folderId) {
+            $dashboardParams['folder'] = $folderId;
+        }
+
+        return match ($from) {
+            'dashboard' => redirect()
+                ->route('dashboard', $dashboardParams)
+                ->with('success', 'Prompt creato e aggiunto alla dashboard!'),
+            'index', 'prompts' => redirect()
+                ->route('prompts.index')
+                ->with('success', 'Prompt creato!'),
+            default => redirect()
+                ->route('prompts.show', $prompt)
+                ->with('success', 'Prompt creato!'),
+        };
     }
 
     public function show(Prompt $prompt, Request $request)
@@ -104,7 +131,7 @@ class PromptController extends Controller
         ]);
     }
 
-    public function update(Request $request, Prompt $prompt)
+   public function update(Request $request, Prompt $prompt)
     {
         $this->authorize('update', $prompt);
         $data = $request->validate([
@@ -116,7 +143,29 @@ class PromptController extends Controller
         $prompt->update($data);
         $prompt->tags()->sync($this->syncTags($request->input('tags', [])));
 
-        return redirect()->route('prompts.show', $prompt)->with('success', 'Aggiornato!');
+        // === INIZIO LOGICA REDIRECT ===
+        // ✅ redirect dinamico (come in 'store')
+        $from = $request->input('from') ?? $request->query('from');
+        $folderId = (int) $request->query('folder');
+
+        // Prepara i parametri per il redirect alla dashboard
+        $dashboardParams = [];
+        if ($folderId) {
+            $dashboardParams['folder'] = $folderId;
+        }
+
+        return match ($from) {
+            'dashboard' => redirect()
+                ->route('dashboard', $dashboardParams)
+                ->with('success', 'Prompt aggiornato!'),
+            'index', 'prompts' => redirect()
+                ->route('prompts.index')
+                ->with('success', 'Prompt aggiornato!'),
+            default => redirect()
+                ->route('prompts.show', $prompt) // Il fallback è tornare alla 'show'
+                ->with('success', 'Prompt aggiornato!'),
+        };
+        // === FINE LOGICA REDIRECT ===
     }
 
     public function destroy(Prompt $prompt)

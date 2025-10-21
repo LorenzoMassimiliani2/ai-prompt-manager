@@ -14,6 +14,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Tag::class => \App\Policies\TagPolicy::class,
         \App\Models\Comment::class => \App\Policies\CommentPolicy::class,
         \App\Models\Service::class => \App\Policies\ServicePolicy::class,
+        \App\Models\Folder::class => \App\Policies\FolderPolicy::class,
     ];
 
     /**

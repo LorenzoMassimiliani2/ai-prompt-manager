@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link, useForm, router } from '@inertiajs/vue3'
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 
 const props = defineProps({
@@ -47,11 +47,56 @@ async function createTagQuick(){
     })
 }
 
-function submit(){
-  isEdit.value
-    ? form.put(route('prompts.update', props.prompt.id))
-    : form.post(route('prompts.store'))
+function submit() {
+  // 1. Prepara i query parameters da inoltrare al controller
+  const queryParams = {}
+  if (from.value) {
+    queryParams.from = from.value
+  }
+  if (folder.value) {
+    queryParams.folder = folder.value
+  }
+
+  // 2. Invia il form
+  if (isEdit.value) {
+    // Invia i queryParams anche in modifica, per gestire il redirect corretto
+    form.put(route('prompts.update', { 
+      prompt: props.prompt.id, // Parametro della rotta
+      ...queryParams          // Parametri query: ?from=...&folder=...
+    }))
+  } else {
+    // Invia i queryParams in creazione
+    console.log('Creating with query params:', queryParams); 
+    form.post(route('prompts.store', queryParams))
+  }
 }
+
+const page = usePage()
+
+// 1. Oggetto reattivo per tutti i parametri dell'URL
+const urlParams = computed(() => {
+  const queryString = page.url.split('?')[1] || ''
+  return new URLSearchParams(queryString)
+})
+
+// 2. Estrai 'from' e 'folder' in modo reattivo
+const from = computed(() => urlParams.value.get('from'))
+const folder = computed(() => urlParams.value.get('folder'))
+
+// 3. Crea il link "Indietro" che include anche il folder se necessario
+const backUrl = computed(() => {
+  if (from.value === 'dashboard') {
+    const params = {}
+    if (folder.value) {
+      params.folder = folder.value
+    }
+    // Ritorna a 'dashboard', con ?folder=3 se presente
+    return route('dashboard', params)
+  }
+  
+  // Ritorna all'indice dei prompt
+  return route('prompts.index')
+})
 </script>
 
 <template>
@@ -70,7 +115,13 @@ function submit(){
             Scrivi il testo del prompt, scegli visibilità e tag. Mantieni il testo chiaro e riutilizzabile.
           </p>
         </div>
-        <Link :href="route('prompts.index')" class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">Indietro</Link>
+        <Link
+          :href="backUrl"
+          class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2"
+        >
+          <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-60"><path d="M15 18l-6-6 6-6" fill="currentColor" /></svg>
+          <span>Indietro</span>
+        </Link>
       </div>
 
       <!-- Card -->
