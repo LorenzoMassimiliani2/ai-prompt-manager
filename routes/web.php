@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromptController;
+use App\Http\Controllers\TagController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -12,7 +13,7 @@ Route::get('/', function () {
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
-    ]);
+    ]); 
 });
 
 Route::get('/dashboard', function () {
@@ -26,6 +27,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('prompts', PromptController::class);
     Route::post('prompts/{prompt}/favorite', [PromptController::class, 'toggleFavorite'])
         ->name('prompts.favorite');
+
+    Route::resource('tags', TagController::class)->only(['store','update','destroy']);
+
 });
 
 Route::get('/', fn() => redirect()->route('prompts.index'));

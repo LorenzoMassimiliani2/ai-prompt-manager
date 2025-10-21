@@ -11,46 +11,71 @@ class PromptController extends Controller
 {
     public function index(Request $request)
     {
-        $q = $request->string('q')->toString();
-        $prompts = Prompt::with(['user','tags'])
-            ->when(!$request->user(), fn($qq)=>$qq->public())
-            ->search($q)
-            ->latest()->paginate(12)->withQueryString();
+        $q = trim((string) $request->query('q', ''));
+        $tags = $request->query('tags', []);            // array di id
+        $view = $request->query('view', 'grid');        // grid | list | details
 
-        $tags = Tag::orderBy('name')->take(50)->get();
+        $prompts = Prompt::with(['user', 'tags'])
+            ->when(!$request->user(), fn($qq) => $qq->public())
+            ->search($q)
+            ->withAnyTags(is_array($tags) ? array_filter($tags) : [])
+            ->latest()
+            ->paginate(12)
+            ->withQueryString();
+
+        $allTags = Tag::orderBy('name')->get();
 
         return Inertia::render('Prompts/Index', [
             'prompts' => $prompts,
-            'filters' => ['q' => $q],
-            'tags'    => $tags
+            'filters' => ['q' => $q, 'tags' => $tags, 'view' => $view],
+            'tags' => $allTags,
+            'can' => [
+                'create' => (bool) $request->user(),
+                'manageTags' => \Gate::allows('create', Tag::class),
+            ],
         ]);
     }
 
-    public function create() {
-        return Inertia::render('Prompts/Form', ['prompt' => null, 'allTags' => Tag::orderBy('name')->get()]);
+    public function create()
+    {
+        return Inertia::render('Prompts/Form', ['prompt' => null,
+            'allTags' => Tag::orderBy('name')->get(),
+            'can' => ['manageTags' => \Gate::allows('create', Tag::class),],
+        ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'=>'required|string|max:160',
-            'content'=>'required|string',
-            'visibility'=>'required|in:private,public,unlisted',
-            'tags'=>'array'
+            'title' => 'required|string|max:160',
+            'content' => 'required|string',
+            'visibility' => 'required|in:private,public,unlisted',
+            'tags' => 'array'
         ]);
         $data['user_id'] = $request->user()->id;
 
         $prompt = Prompt::create($data);
         $prompt->tags()->sync($this->syncTags($request->input('tags', [])));
 
-        return redirect()->route('prompts.index')->with('success','Prompt creato!');
+        return redirect()->route('prompts.index')->with('success', 'Prompt creato!');
     }
 
-    public function show(Prompt $prompt)
+    public function show(Prompt $prompt, Request $request)
     {
         $this->authorize('view', $prompt);
-        $prompt->load(['user','tags']);
-        return Inertia::render('Prompts/Show', ['prompt' => $prompt]);
+        $prompt->load(['user', 'tags']);
+        return Inertia::render('Prompts/Show', [
+            'prompt' => $prompt,
+            'allTags' => Tag::orderBy('name')->get(),
+            'can' => [
+                'update' => (bool) $request->user()?->can('update', $prompt),
+                'delete' => (bool) $request->user()?->can('delete', $prompt),
+                'manageTags' => \Gate::allows('create', Tag::class),
+            ],
+            'flash' => [
+                'success' => session('success'),
+            ],
+        ]);
     }
 
     public function edit(Prompt $prompt)
@@ -58,7 +83,8 @@ class PromptController extends Controller
         $this->authorize('update', $prompt);
         return Inertia::render('Prompts/Form', [
             'prompt' => $prompt->load('tags'),
-            'allTags' => Tag::orderBy('name')->get()
+            'allTags' => Tag::orderBy('name')->get(),
+            'can' => ['manageTags' => \Gate::allows('create', Tag::class)],
         ]);
     }
 
@@ -66,22 +92,22 @@ class PromptController extends Controller
     {
         $this->authorize('update', $prompt);
         $data = $request->validate([
-            'title'=>'required|string|max:160',
-            'content'=>'required|string',
-            'visibility'=>'required|in:private,public,unlisted',
-            'tags'=>'array'
+            'title' => 'required|string|max:160',
+            'content' => 'required|string',
+            'visibility' => 'required|in:private,public,unlisted',
+            'tags' => 'array'
         ]);
         $prompt->update($data);
         $prompt->tags()->sync($this->syncTags($request->input('tags', [])));
 
-        return redirect()->route('prompts.show', $prompt)->with('success','Aggiornato!');
+        return redirect()->route('prompts.show', $prompt)->with('success', 'Aggiornato!');
     }
 
     public function destroy(Prompt $prompt)
     {
         $this->authorize('delete', $prompt);
         $prompt->delete();
-        return redirect()->route('prompts.index')->with('success','Eliminato!');
+        return redirect()->route('prompts.index')->with('success', 'Eliminato!');
     }
 
     public function toggleFavorite(Request $request, Prompt $prompt)
@@ -97,11 +123,24 @@ class PromptController extends Controller
 
     private function syncTags(array $tags): array
     {
-        // accetta array di id o nomi, crea i mancanti
         $ids = [];
+        $canManage = \Gate::allows('create', Tag::class);
+
         foreach ($tags as $t) {
-            if (is_numeric($t)) { $ids[] = (int)$t; continue; }
-            $tag = Tag::firstOrCreate(['slug'=>\Str::slug($t)], ['name'=>$t]);
+            if (is_numeric($t)) {
+                $ids[] = (int) $t;
+                continue;
+            }
+
+            // se è una stringa (nome tag) e l'utente NON è superuser:
+            if (!$canManage) {
+                // ignora oppure lancia errore di validazione
+                // throw \Illuminate\Validation\ValidationException::withMessages(['tags'=>'Non autorizzato a creare nuovi tag.']);
+                continue;
+            }
+
+            // superuser può creare
+            $tag = Tag::firstOrCreate(['slug' => \Str::slug($t)], ['name' => $t]);
             $ids[] = $tag->id;
         }
         return $ids;
