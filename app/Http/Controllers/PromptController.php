@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Prompt;
 use App\Models\Tag;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -69,11 +70,14 @@ class PromptController extends Controller
             ->with('user:id,name')
             ->paginate(10)
             ->withQueryString();
+        
+        $services = Service::where('is_active', true)->orderBy('sort')->get(['id','key','name','base_url','supports_query','meta']);    
 
         return Inertia::render('Prompts/Show', [
             'prompt' => $prompt,
             'allTags' => Tag::orderBy('name')->get(),
             'comments' => $comments,
+            'services' => $services,
             'auth' => [
                 'userId' => optional($request->user())->id,
                 'isSuper'=> (bool) optional($request->user())->is_superuser,

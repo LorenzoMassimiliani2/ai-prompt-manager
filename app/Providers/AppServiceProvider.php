@@ -13,6 +13,7 @@ class AppServiceProvider extends ServiceProvider
         \App\Models\Prompt::class => \App\Policies\PromptPolicy::class,
         \App\Models\Tag::class => \App\Policies\TagPolicy::class,
         \App\Models\Comment::class => \App\Policies\CommentPolicy::class,
+        \App\Models\Service::class => \App\Policies\ServicePolicy::class,
     ];
 
     /**

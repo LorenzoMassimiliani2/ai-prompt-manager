@@ -9,6 +9,7 @@ const props = defineProps({
   flash: Object,
   auth: Object,
   comments: Object,
+  services: Array
 })
 
 const editMode = ref(false)
@@ -41,7 +42,7 @@ const destroyPrompt = () => {
 
 const toggleTag = (id) => {
   const i = form.tags.indexOf(id)
-  i === -1 ? form.tags.push(id) : form.tags.splice(i,1)
+  i === -1 ? form.tags.push(id) : form.tags.splice(i, 1)
 }
 
 const pushToast = (msg) => {
@@ -85,9 +86,38 @@ const deleteComment = (comment) => {
     }
   })
 }
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text || '')
+    pushToast('Prompt copiato negli appunti ✂️')
+  } catch (e) {
+    // fallback
+    const ta = document.createElement('textarea')
+    ta.value = text || ''
+    document.body.appendChild(ta)
+    ta.select(); document.execCommand('copy')
+    document.body.removeChild(ta)
+    pushToast('Prompt copiato (fallback) ✂️')
+  }
+}
+
+function openService(svc) {
+  const body = (/* in edit? */ typeof form !== 'undefined' ? form.content : props.prompt.content) || ''
+  copyText(body)
+
+  if (svc.supports_query) {
+    const q = encodeURIComponent(body.slice(0, 5000))
+    const u = `${svc.base_url}${svc.base_url.includes('?') ? '&' : '?'}q=${q}`
+    window.open(u, '_blank', 'noopener')
+  } else {
+    window.open(svc.base_url, '_blank', 'noopener')
+  }
+}
 </script>
 
 <template>
+
   <Head :title="props.prompt.title" />
   <div class="min-h-screen bg-gray-50">
     <!-- toasts -->
@@ -99,64 +129,103 @@ const deleteComment = (comment) => {
 
     <div class="max-w-4xl mx-auto px-4 py-8">
       <!-- header -->
-      <div class="flex items-start justify-between mb-6">
+      <div class="flex items-start justify-between mb-4">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">{{ form.title }}</h1>
-          <div class="mt-2 flex items-center gap-2 text-sm text-gray-600">
-            <span class="px-2 py-0.5 rounded-full border">
+          <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+            <span class="px-2 py-0.5 rounded-full border bg-white">
               {{ form.visibility }}
             </span>
-            <span>•</span>
+            <span class="hidden sm:inline">•</span>
             <span>di {{ props.prompt.user?.name }}</span>
-            <span>•</span>
+            <span class="hidden sm:inline">•</span>
             <span>{{ new Date(props.prompt.created_at).toLocaleDateString() }}</span>
           </div>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex gap-2 shrink-0">
           <Link :href="route('prompts.index')" class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">Indietro</Link>
-          <button
-            v-if="can?.update"
-            @click="editMode = !editMode"
+          <button v-if="can?.update" @click="editMode = !editMode"
             class="px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
             {{ editMode ? 'Annulla' : 'Modifica' }}
           </button>
-          <button
-            v-if="can?.delete"
-            @click="confirmOpen = true"
+          <button v-if="can?.delete" @click="confirmOpen = true"
             class="px-3 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700">
             Elimina
           </button>
         </div>
       </div>
 
-      <!-- card -->
+      <!-- quick actions toolbar -->
+      <div v-if="!editMode" class="mb-6">
+        <div class="bg-white border rounded-2xl shadow-sm">
+          <div class="px-4 sm:px-6 py-3 border-b flex items-center justify-between">
+            <h2 class="text-sm font-medium text-gray-700">Azioni rapide</h2>
+            <button
+              @click="copyText((typeof form !== 'undefined' ? form.content : props.prompt.content) || '')"
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-400 text-white hover:brightness-95 shadow-sm">
+              <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-90">
+                <path
+                  d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12zM20 5H8a2 2 0 0 0-2 2v14h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12z"
+                  fill="currentColor" />
+              </svg>
+              <span class="text-sm">Copia prompt</span>
+            </button>
+          </div>
+
+          <!-- servizi: carosello orizzontale scrollabile -->
+          <div class="px-3 sm:px-4 py-3">
+            <div class="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
+              <button
+                v-for="s in services"
+                :key="s.id"
+                @click="openService(s)"
+                class="group flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm">
+                <svg v-if="s.meta?.icon_path" :viewBox="s.meta?.viewBox || '0 0 24 24'" class="w-4 h-4 opacity-80 group-hover:opacity-100">
+                  <path :d="s.meta.icon_path" fill="currentColor" />
+                </svg>
+                <span class="text-sm font-medium">{{ s.name }}</span>
+                <span v-if="s.supports_query"
+                      class="text-[10px] leading-none px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
+                  auto
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- main card -->
       <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-        <!-- tags + visibility -->
+        <!-- tags -->
         <div class="px-6 py-4 border-b bg-gray-50 flex flex-wrap items-center gap-2">
-          <span v-for="t in props.prompt.tags" :key="t.id" class="text-xs bg-white border px-2 py-1 rounded-full">
+          <span
+            v-for="t in props.prompt.tags"
+            :key="t.id"
+            class="text-xs bg-white border border-gray-200 text-gray-700 px-2 py-1 rounded-full">
             #{{ t.name }}
           </span>
         </div>
 
-        <!-- content / edit form -->
         <div class="p-6">
           <!-- VIEW MODE -->
-          <div v-if="!editMode" class="prose max-w-none">
-            <pre class="whitespace-pre-wrap font-sans text-gray-800">{{ form.content }}</pre>
+          <div v-if="!editMode" class="max-w-none">
+            <pre class="whitespace-pre-wrap text-[15px] leading-7 text-gray-800 mb-2">{{ form.content }}</pre>
           </div>
 
           <!-- EDIT MODE -->
           <div v-else class="space-y-5">
             <div>
               <label class="block text-sm font-medium mb-1">Titolo</label>
-              <input v-model="form.title" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              <input v-model="form.title"
+                     class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
               <p v-if="form.errors.title" class="text-sm text-red-600 mt-1">{{ form.errors.title }}</p>
             </div>
 
             <div>
               <label class="block text-sm font-medium mb-1">Prompt</label>
-              <textarea v-model="form.content" rows="10" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              <textarea v-model="form.content" rows="10"
+                        class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
               <p v-if="form.errors.content" class="text-sm text-red-600 mt-1">{{ form.errors.content }}</p>
             </div>
 
@@ -178,10 +247,11 @@ const deleteComment = (comment) => {
                     type="button"
                     @click="toggleTag(t.id)"
                     :class="[
-                      'px-2 py-1 rounded-full border text-sm',
-                      form.tags.includes(t.id) ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-gray-200'
-                    ]"
-                  >
+                      'px-2 py-1 rounded-full border text-sm transition',
+                      form.tags.includes(t.id)
+                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                    ]">
                     #{{ t.name }}
                   </button>
                 </div>
@@ -191,10 +261,10 @@ const deleteComment = (comment) => {
 
             <div class="flex items-center gap-3">
               <button @click="save" :disabled="form.processing"
-                class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
+                      class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
                 {{ form.processing ? 'Salvataggio…' : 'Salva' }}
               </button>
-              <button @click="editMode=false" class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">
+              <button @click="editMode = false" class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">
                 Annulla
               </button>
             </div>
@@ -202,14 +272,23 @@ const deleteComment = (comment) => {
         </div>
       </div>
 
-      <!-- sezione info secondaria -->
+      <!-- meta columns -->
       <div class="mt-6 grid md:grid-cols-2 gap-6">
         <div class="bg-white rounded-2xl border p-5">
           <h3 class="font-medium mb-2">Dettagli</h3>
           <dl class="text-sm text-gray-600 space-y-1">
-            <div class="flex justify-between"><dt>ID</dt><dd>#{{ props.prompt.id }}</dd></div>
-            <div class="flex justify-between"><dt>Creato</dt><dd>{{ new Date(props.prompt.created_at).toLocaleString() }}</dd></div>
-            <div class="flex justify-between"><dt>Aggiornato</dt><dd>{{ new Date(props.prompt.updated_at).toLocaleString() }}</dd></div>
+            <div class="flex justify-between">
+              <dt>ID</dt>
+              <dd>#{{ props.prompt.id }}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt>Creato</dt>
+              <dd>{{ new Date(props.prompt.created_at).toLocaleString() }}</dd>
+            </div>
+            <div class="flex justify-between">
+              <dt>Aggiornato</dt>
+              <dd>{{ new Date(props.prompt.updated_at).toLocaleString() }}</dd>
+            </div>
           </dl>
         </div>
         <div class="bg-white rounded-2xl border p-5">
@@ -232,12 +311,11 @@ const deleteComment = (comment) => {
         <!-- Nuovo commento -->
         <div v-if="can?.commentCreate" class="p-6 border-b">
           <form @submit.prevent="addComment" class="space-y-3">
-            <textarea v-model="cform.body" rows="4"
-              placeholder="Aggiungi un commento…"
-              class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <textarea v-model="cform.body" rows="4" placeholder="Aggiungi un commento…"
+                      class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
             <div class="flex justify-end">
               <button :disabled="cform.processing || !cform.body.trim()"
-                class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
+                      class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
                 Pubblica
               </button>
             </div>
@@ -257,7 +335,8 @@ const deleteComment = (comment) => {
                 <p class="mt-2 whitespace-pre-wrap text-gray-800">{{ c.body }}</p>
               </div>
               <div class="shrink-0 ml-3" v-if="canDeleteComment(c)">
-                <button @click="deleteComment(c)" class="px-3 py-1 rounded bg-red-600 text-white text-sm">Elimina</button>
+                <button @click="deleteComment(c)"
+                        class="px-3 py-1 rounded bg-red-600 text-white text-sm">Elimina</button>
               </div>
             </div>
           </div>
@@ -269,7 +348,6 @@ const deleteComment = (comment) => {
         </div>
         <div v-else class="p-6 text-sm text-gray-500">Ancora nessun commento.</div>
       </div>
-
     </div>
 
     <!-- modal conferma delete -->
@@ -278,8 +356,10 @@ const deleteComment = (comment) => {
         <h3 class="text-lg font-semibold">Eliminare questo prompt?</h3>
         <p class="text-sm text-gray-600 mt-1">L’azione non è reversibile.</p>
         <div class="mt-5 flex justify-end gap-2">
-          <button @click="confirmOpen=false" class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Annulla</button>
-          <button @click="destroyPrompt" :disabled="form.processing" class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700">
+          <button @click="confirmOpen = false"
+                  class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Annulla</button>
+          <button @click="destroyPrompt" :disabled="form.processing"
+                  class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700">
             Elimina
           </button>
         </div>

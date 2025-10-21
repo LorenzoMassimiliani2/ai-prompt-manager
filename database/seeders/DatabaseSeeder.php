@@ -22,5 +22,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(\Database\Seeders\PromptSeeder::class);
+
+        $this->call(\Database\Seeders\ServiceSeeder::class);
     }
 }
