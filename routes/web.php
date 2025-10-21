@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PromptController;
+use App\Http\Controllers\CommentController; 
 use App\Http\Controllers\TagController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -29,6 +30,9 @@ Route::middleware('auth')->group(function () {
         ->name('prompts.favorite');
 
     Route::resource('tags', TagController::class)->only(['store','update','destroy']);
+
+    Route::post('prompts/{prompt}/comments', [CommentController::class, 'store'])->name('prompts.comments.store');
+    Route::delete('prompts/{prompt}/comments/{comment}', [CommentController::class, 'destroy'])->name('prompts.comments.destroy');
 
 });
 

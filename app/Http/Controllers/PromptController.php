@@ -64,13 +64,25 @@ class PromptController extends Controller
     {
         $this->authorize('view', $prompt);
         $prompt->load(['user', 'tags']);
+
+        $comments = $prompt->comments()
+            ->with('user:id,name')
+            ->paginate(10)
+            ->withQueryString();
+
         return Inertia::render('Prompts/Show', [
             'prompt' => $prompt,
             'allTags' => Tag::orderBy('name')->get(),
+            'comments' => $comments,
+            'auth' => [
+                'userId' => optional($request->user())->id,
+                'isSuper'=> (bool) optional($request->user())->is_superuser,
+            ],
             'can' => [
                 'update' => (bool) $request->user()?->can('update', $prompt),
                 'delete' => (bool) $request->user()?->can('delete', $prompt),
                 'manageTags' => \Gate::allows('create', Tag::class),
+                'commentCreate' => (bool) $request->user(), // basta login
             ],
             'flash' => [
                 'success' => session('success'),

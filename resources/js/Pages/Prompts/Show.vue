@@ -7,6 +7,8 @@ const props = defineProps({
   allTags: Array,
   can: Object,
   flash: Object,
+  auth: Object,
+  comments: Object,
 })
 
 const editMode = ref(false)
@@ -51,6 +53,38 @@ const pushToast = (msg) => {
 onMounted(() => {
   if (props.flash?.success) pushToast(props.flash.success)
 })
+
+const cform = useForm({ body: '' })
+const addComment = () => {
+  if (!cform.body.trim()) return
+  cform.post(route('prompts.comments.store', props.prompt.id), {
+    preserveScroll: true,
+    onSuccess: () => {
+      cform.reset('body')
+      pushToast('Commento aggiunto ✅')
+      // ricarica solo la lista commenti
+      router.reload({ only: ['comments'] })
+    }
+  })
+}
+
+// delete comment
+const cdel = useForm({})
+const canDeleteComment = (comment) => {
+  // owner o superuser
+  return props?.auth?.isSuper || props?.auth?.userId === comment.user_id
+}
+const deleteComment = (comment) => {
+  if (!canDeleteComment(comment)) return
+  if (!confirm('Eliminare questo commento?')) return
+  cdel.delete(route('prompts.comments.destroy', { prompt: props.prompt.id, comment: comment.id }), {
+    preserveScroll: true,
+    onSuccess: () => {
+      pushToast('Commento eliminato 🗑️')
+      router.reload({ only: ['comments'] })
+    }
+  })
+}
 </script>
 
 <template>
@@ -187,6 +221,55 @@ onMounted(() => {
           </ul>
         </div>
       </div>
+
+      <!-- Commenti -->
+      <div class="mt-8 bg-white rounded-2xl border">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 class="font-medium">Commenti</h3>
+          <span class="text-sm text-gray-500">{{ comments?.total ?? 0 }}</span>
+        </div>
+
+        <!-- Nuovo commento -->
+        <div v-if="can?.commentCreate" class="p-6 border-b">
+          <form @submit.prevent="addComment" class="space-y-3">
+            <textarea v-model="cform.body" rows="4"
+              placeholder="Aggiungi un commento…"
+              class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <div class="flex justify-end">
+              <button :disabled="cform.processing || !cform.body.trim()"
+                class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
+                Pubblica
+              </button>
+            </div>
+            <p v-if="cform.errors.body" class="text-sm text-red-600">{{ cform.errors.body }}</p>
+          </form>
+        </div>
+
+        <!-- Lista commenti -->
+        <div v-if="comments && comments.data?.length" class="divide-y">
+          <div v-for="c in comments.data" :key="c.id" class="p-6">
+            <div class="flex items-start justify-between">
+              <div class="min-w-0">
+                <div class="text-sm font-medium">
+                  {{ c.user?.name || 'Utente' }}
+                  <span class="text-gray-400 ml-2 text-xs">{{ new Date(c.created_at).toLocaleString() }}</span>
+                </div>
+                <p class="mt-2 whitespace-pre-wrap text-gray-800">{{ c.body }}</p>
+              </div>
+              <div class="shrink-0 ml-3" v-if="canDeleteComment(c)">
+                <button @click="deleteComment(c)" class="px-3 py-1 rounded bg-red-600 text-white text-sm">Elimina</button>
+              </div>
+            </div>
+          </div>
+          <!-- paginazione -->
+          <div class="p-4 flex justify-center gap-2" v-if="comments.links">
+            <Link v-for="l in comments.links" :key="l.url + l.label" :href="l.url || '#'" v-html="l.label"
+              :class="['px-3 py-1 rounded', l.active ? 'bg-indigo-600 text-white' : 'bg-gray-100']" />
+          </div>
+        </div>
+        <div v-else class="p-6 text-sm text-gray-500">Ancora nessun commento.</div>
+      </div>
+
     </div>
 
     <!-- modal conferma delete -->
