@@ -8,6 +8,8 @@ RUN composer install --no-dev --prefer-dist --no-progress --no-scripts --optimiz
 
 # ora copia tutto il progetto e sistema autoload
 COPY . .
+# --- DEBUG 1: Controlla se le viste sono presenti nella prima fase ---
+RUN echo "--- DEBUG (VENDOR STAGE): Contenuto di /app/resources/views ---" && ls -laR /app/resources/views || echo "--- DEBUG (VENDOR STAGE): /app/resources/views NON TROVATA O VUOTA ---"
 RUN composer dump-autoload --optimize && php -v && composer -V
 
 # ── 2) Node: build degli asset (Vite) ───────────────────────────────────────────
@@ -22,9 +24,10 @@ RUN if [ -f package-lock.json ]; then npm ci; \
 # COPIA vendor/tightenco/ziggy prima del build
 COPY --from=vendor /app/vendor/tightenco/ziggy /app/vendor/tightenco/ziggy
 
-# copia codice sorgente    
+# copia codice sorgente
 COPY . .
-
+# --- DEBUG 2: Controlla se le viste sono presenti anche nella fase frontend ---
+RUN echo "--- DEBUG (FRONTEND STAGE): Contenuto di /app/resources/views ---" && ls -laR /app/resources/views || echo "--- DEBUG (FRONTEND STAGE): /app/resources/views NON TROVATA O VUOTA ---"
 RUN npm run build
 
 # ── 3) Runtime: nginx + php-fpm su Alpine ──────────────────────────────────────
@@ -50,6 +53,9 @@ COPY --from=vendor /app/vendor $APP_DIR/vendor
 
 # 3. Copia gli asset compilati dalla fase 'frontend'
 COPY --from=frontend /app/public/build $APP_DIR/public/build
+
+# --- DEBUG 3: Controlla se le viste sono presenti nell'immagine finale ---
+RUN echo "--- DEBUG (RUNTIME STAGE): Contenuto di $APP_DIR/resources/views ---" && ls -laR $APP_DIR/resources/views || echo "--- DEBUG (RUNTIME STAGE): $APP_DIR/resources/views NON TROVATA O VUOTA ---"
 
 # Configurazioni
 COPY deploy/nginx.conf.template /etc/nginx/http.d/default.conf.template
