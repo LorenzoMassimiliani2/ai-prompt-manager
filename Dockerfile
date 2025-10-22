@@ -18,7 +18,13 @@ RUN if [ -f package-lock.json ]; then npm ci; \
     elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
     elif [ -f pnpm-lock.yaml ]; then npm i -g pnpm && pnpm i --frozen-lockfile; \
     else npm i; fi
+
+# COPIA vendor/tightenco/ziggy prima del build
+COPY --from=vendor /app/vendor/tightenco/ziggy /app/vendor/tightenco/ziggy
+
+# copia codice sorgente    
 COPY . .
+
 RUN npm run build
 
 # ── 3) Runtime: nginx + php-fpm su Alpine ──────────────────────────────────────
