@@ -8,8 +8,6 @@ RUN composer install --no-dev --prefer-dist --no-progress --no-scripts --optimiz
 
 # ora copia tutto il progetto e sistema autoload
 COPY . .
-# --- DEBUG 1: Controlla se le viste sono presenti nella prima fase ---
-RUN echo "--- DEBUG (VENDOR STAGE): Contenuto di /app/resources/views ---" && ls -laR /app/resources/views || echo "--- DEBUG (VENDOR STAGE): /app/resources/views NON TROVATA O VUOTA ---"
 RUN composer dump-autoload --optimize && php -v && composer -V
 
 # ── 2) Node: build degli asset (Vite) ───────────────────────────────────────────
@@ -26,8 +24,7 @@ COPY --from=vendor /app/vendor/tightenco/ziggy /app/vendor/tightenco/ziggy
 
 # copia codice sorgente
 COPY . .
-# --- DEBUG 2: Controlla se le viste sono presenti anche nella fase frontend ---
-RUN echo "--- DEBUG (FRONTEND STAGE): Contenuto di /app/resources/views ---" && ls -laR /app/resources/views || echo "--- DEBUG (FRONTEND STAGE): /app/resources/views NON TROVATA O VUOTA ---"
+
 RUN npm run build
 
 # ── 3) Runtime: nginx + php-fpm su Alpine ──────────────────────────────────────
@@ -44,18 +41,13 @@ RUN apk add --no-cache \
 ENV APP_DIR=/var/www/html
 WORKDIR $APP_DIR
 
-# Copia app, vendor e assets in modo pulito
-# 1. Copia il codice sorgente dalla cartella locale
-COPY . $APP_DIR
+# --- BLOCCO COPY CORRETTO ---
+# Copia l'intera applicazione (sorgenti + dipendenze) dalla fase 'vendor'
+COPY --from=vendor /app $APP_DIR
 
-# 2. Copia le dipendenze installate dalla fase 'vendor'
-COPY --from=vendor /app/vendor $APP_DIR/vendor
-
-# 3. Copia gli asset compilati dalla fase 'frontend'
+# Sovrascrivi SOLO gli asset compilati dalla fase 'frontend'
 COPY --from=frontend /app/public/build $APP_DIR/public/build
-
-# --- DEBUG 3: Controlla se le viste sono presenti nell'immagine finale ---
-RUN echo "--- DEBUG (RUNTIME STAGE): Contenuto di $APP_DIR/resources/views ---" && ls -laR $APP_DIR/resources/views || echo "--- DEBUG (RUNTIME STAGE): $APP_DIR/resources/views NON TROVATA O VUOTA ---"
+# --- FINE BLOCCO COPY CORRETTO ---
 
 # Configurazioni
 COPY deploy/nginx.conf.template /etc/nginx/http.d/default.conf.template
