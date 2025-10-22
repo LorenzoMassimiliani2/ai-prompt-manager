@@ -49,6 +49,12 @@ COPY --from=vendor /app $APP_DIR
 COPY --from=frontend /app/public/build $APP_DIR/public/build
 # --- FINE BLOCCO COPY CORRETTO ---
 
+# --- TENTATIVO DI FIX PERMESSI ---
+# A volte, i permessi dei file copiati tra stage possono essere inconsistenti.
+# Questo blocco ri-applica esplicitamente i permessi standard.
+RUN find $APP_DIR/resources -type d -exec chmod 755 {} +
+RUN find $APP_DIR/resources -type f -exec chmod 644 {} +
+
 # Configurazioni
 COPY deploy/nginx.conf.template /etc/nginx/http.d/default.conf.template
 COPY deploy/supervisord.conf /etc/supervisord.conf
@@ -65,3 +71,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 CMD ["/entrypoint.sh"]
+
