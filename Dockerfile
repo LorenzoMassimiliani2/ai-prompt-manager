@@ -41,9 +41,14 @@ RUN apk add --no-cache \
 ENV APP_DIR=/var/www/html
 WORKDIR $APP_DIR
 
-# Copia app, vendor e assets
-COPY --from=vendor /app $APP_DIR
+# Copia app, vendor e assets in modo pulito
+# 1. Copia il codice sorgente dalla cartella locale
+COPY . $APP_DIR
+
+# 2. Copia le dipendenze installate dalla fase 'vendor'
 COPY --from=vendor /app/vendor $APP_DIR/vendor
+
+# 3. Copia gli asset compilati dalla fase 'frontend'
 COPY --from=frontend /app/public/build $APP_DIR/public/build
 
 # Configurazioni
