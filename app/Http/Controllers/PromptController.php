@@ -19,6 +19,7 @@ class PromptController extends Controller
 
         $prompts = Prompt::with(['user', 'tags'])
             ->when(!$request->user(), fn($qq) => $qq->public())
+            ->visibleTo($request->user())
             ->search($q)
             ->withAnyTags(is_array($tags) ? array_filter($tags) : [])
             ->latest()

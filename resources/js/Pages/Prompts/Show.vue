@@ -218,24 +218,22 @@ const backUrl = computed(() => {
 
       <!-- quick actions toolbar -->
       <div v-if="!editMode" class="mb-6">
-        <div class="bg-white border rounded-2xl shadow-sm">
-          <div class="px-4 sm:px-6 py-3 border-b flex items-center justify-between">
-            <h2 class="text-sm font-medium text-gray-700">Azioni rapide</h2>
-            <button
-              @click="copyText((typeof form !== 'undefined' ? form.content : props.prompt.content) || '')"
-              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-400 text-white hover:brightness-95 shadow-sm">
-              <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-90">
-                <path
-                  d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12zM20 5H8a2 2 0 0 0-2 2v14h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12z"
-                  fill="currentColor" />
-              </svg>
-              <span class="text-sm">Copia prompt</span>
-            </button>
-          </div>
-
+        <div class="bg-white rounded-2xl shadow-sm">
+   
+          
           <!-- servizi: carosello orizzontale scrollabile -->
           <div class="px-3 sm:px-4 py-3">
             <div class="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
+              <button
+                @click="copyText((typeof form !== 'undefined' ? form.content : props.prompt.content) || '')"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-200 border hover:brightness-95 shadow-sm">
+                <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-90">
+                  <path
+                    d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12zM20 5H8a2 2 0 0 0-2 2v14h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12z"
+                    fill="currentColor" />
+                </svg>
+                <span class="text-sm">Copia prompt</span>
+              </button>
               <button
                 v-for="s in services"
                 :key="s.id"

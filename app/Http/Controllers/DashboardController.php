@@ -13,29 +13,37 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        // Albero cartelle (solo sue)
-        $roots = Folder::forUser($user->id)->roots()
-            ->with([
-                'children' => function ($q) use ($user) {
-                    $q->forUser($user->id)->with([
-                        'children' => function ($qq) use ($user) {
-                            $qq->forUser($user->id)->with('children'); // 3 livelli; puoi ricorsivamente serializzare lato FE
-                        }
-                    ]);
+        // Tutte le cartelle dell’utente (flat) + count dei prompt diretti di QUELL’utente
+        $folders = Folder::forUser($user->id)
+            ->withCount([
+                'prompts as direct_prompts_count' => function ($q) use ($user) {
+                    $q->where('folder_prompt.user_id', $user->id);
                 }
             ])
             ->orderBy('sort')->orderBy('name')
-            ->get();
+            ->get(['id', 'name', 'parent_id', 'user_id', 'sort']);
 
-        // facoltativo: “cartella corrente” via query ?folder=ID
-        $currentId = (int) request('folder', 0);
-        $current = $currentId ? Folder::forUser($user->id)->with('prompts.tags')->find($currentId) : null;
+        // Cartella corrente (selezionata) con i prompt
+        $currentId = (int) $request->query('folder', 0);
+        $current = $currentId
+            ? Folder::forUser($user->id)
+                ->with('prompts.tags')
+                ->withCount([
+                    'prompts as direct_prompts_count' => function ($q) use ($user) {
+                        $q->where('folder_prompt.user_id', $user->id);
+                    }
+                ])
+                ->find($currentId)
+            : null;
 
-        // prompt dell'utente per “sposta in cartella”
-        $myPrompts = Prompt::where('user_id', $user->id)->orderByDesc('updated_at')->limit(50)->get(['id', 'title']);
+        $myPrompts = Prompt::where('user_id', $user->id)
+            ->orderByDesc('updated_at')
+            ->limit(50)
+            ->get(['id', 'title']);
+
 
         return Inertia::render('Dashboard/Index', [
-            'tree' => $roots,
+            'folders' => $folders,  // <— flat
             'current' => $current,
             'myPrompts' => $myPrompts,
         ]);

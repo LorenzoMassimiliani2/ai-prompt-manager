@@ -17,7 +17,7 @@ const showingNavigationDropdown = ref(false);
                 class="border-b border-gray-100 bg-white"
             >
                 <!-- Primary Navigation Menu -->
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex h-16 justify-between">
                         <div class="flex">
                             <!-- Logo -->
@@ -38,6 +38,12 @@ const showingNavigationDropdown = ref(false);
                                     :active="route().current('dashboard')"
                                 >
                                     Dashboard
+                                </NavLink>
+                                <NavLink
+                                    :href="route('prompts.index')"
+                                    :active="route().current('prompts.index')"
+                                >
+                                    Lista Prompts
                                 </NavLink>
                             </div>
                         </div>
@@ -145,6 +151,12 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dashboard')"
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('prompts.index')"
+                            :active="route().current('prompts.index')"
+                        >
+                            Lista Prompts
                         </ResponsiveNavLink>
                     </div>
 

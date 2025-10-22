@@ -53,6 +53,27 @@ class Prompt extends Model
         return $q->whereHas('tags', fn($t) => $t->whereIn('tags.id', $tagIds));
     }
 
+    public function scopeVisibleTo($q, User $user)
+    {
+        if (!$user) {
+            // ospiti: solo public
+            return $q->where('visibility', 'public');
+        }
+
+        // autenticato: public, unlisted, oppure propri
+        return $q->where(function ($qq) use ($user) {
+            $qq->whereIn('visibility', ['public','unlisted'])
+            ->orWhere('user_id', $user->id);
+        });
+
+        // Se in futuro hai condivisioni, aggiungi qui:
+        // ->orWhereExists(function($s) use ($user) {
+        //     $s->selectRaw(1)->from('prompt_shares')
+        //       ->whereColumn('prompt_shares.prompt_id', 'prompts.id')
+        //       ->where('prompt_shares.user_id', $user->id);
+        // })
+    }
+
     protected static function booted()
     {
         static::creating(function ($prompt) {
