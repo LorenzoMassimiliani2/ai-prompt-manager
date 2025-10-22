@@ -3,6 +3,12 @@ set -e
 
 cd /var/www/html
 
+# Forza PHP-FPM a portare gli errori su stderr (visibili su Koyeb)
+sed -i 's|^;*catch_workers_output =.*|catch_workers_output = yes|' /etc/php83/php-fpm.d/www.conf
+grep -q 'php_admin_value\[error_log\]' /etc/php83/php-fpm.d/www.conf || echo 'php_admin_value[error_log] = /proc/self/fd/2' >> /etc/php83/php-fpm.d/www.conf
+grep -q 'php_admin_flag\[log_errors\]' /etc/php83/php-fpm.d/www.conf || echo 'php_admin_flag[log_errors] = on' >> /etc/php83/php-fpm.d/www.conf
+
+
 # 1) Materializza la config nginx con $PORT
 export PORT="${PORT:-8080}"
 envsubst '$PORT' </etc/nginx/http.d/default.conf.template >/etc/nginx/http.d/default.conf
