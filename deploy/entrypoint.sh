@@ -3,6 +3,21 @@ set -e
 
 cd /var/www/html
 
+# ── DEBUG ────────────────────────────────────────────────────────
+echo "--- DEBUG: Contenuto di /var/www/html ---"
+ls -la
+echo "-----------------------------------------"
+
+echo "--- DEBUG: Contenuto di /var/www/html/resources ---"
+ls -la resources || echo "La cartella 'resources' non esiste o e' vuota."
+echo "---------------------------------------------------"
+# ── FINE DEBUG ───────────────────────────────────────────────────
+
+
+# Forza PHP-FPM a portare gli errori su stderr (visibili su Koyeb)
+sed -i 's|^;*catch_workers_output =.*|catch_workers_output = yes|' /etc/php83/php-fpm.d/www.conf
+# ... (il resto del tuo script non cambia) ...
+
 # Forza PHP-FPM a portare gli errori su stderr (visibili su Koyeb)
 sed -i 's|^;*catch_workers_output =.*|catch_workers_output = yes|' /etc/php83/php-fpm.d/www.conf
 grep -q 'php_admin_value\[error_log\]' /etc/php83/php-fpm.d/www.conf || echo 'php_admin_value[error_log] = /proc/self/fd/2' >> /etc/php83/php-fpm.d/www.conf
