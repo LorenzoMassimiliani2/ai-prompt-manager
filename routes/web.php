@@ -5,6 +5,7 @@ use App\Http\Controllers\PromptController;
 use App\Http\Controllers\CommentController; 
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PromptFolderController; 
 use App\Http\Controllers\FolderController;
 use App\Http\Controllers\TagController;
 use Illuminate\Foundation\Application;
@@ -31,6 +32,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('prompts', PromptController::class);
     Route::post('prompts/{prompt}/favorite', [PromptController::class, 'toggleFavorite'])
         ->name('prompts.favorite');
+    
+        Route::post('/prompts/{prompt}/folders', [PromptFolderController::class, 'attach'])
+    ->name('prompts.folders.attach');
+    
+    Route::delete('/prompts/{prompt}/folders/{folder}', [PromptFolderController::class, 'detach'])
+    ->name('prompts.folders.detach');    
 
     Route::resource('tags', TagController::class)->only(['store','update','destroy']);
 

@@ -27,6 +27,11 @@ class Prompt extends Model
         return $this->belongsToMany(User::class, 'favorites');
     }
 
+    public function folders()
+    {
+        return $this->belongsToMany(Folder::class, 'folder_prompt')->withPivot('user_id');
+    }
+
     public function comments()
     {
         return $this->hasMany(Comment::class)->latest();
@@ -45,6 +50,8 @@ class Prompt extends Model
             $s->where('title', 'like', "%$term%")->orWhere('content', 'like', "%$term%");
         });
     }
+
+
 
     public function scopeWithAnyTags($q, array $tagIds)
     {

@@ -101,6 +101,19 @@ class PromptController extends Controller
         
         $services = Service::where('is_active', true)->orderBy('sort')->get(['id','key','name','base_url','supports_query','meta']);    
 
+        // Cartelle dell'utente (per il select)
+        $user = $request->user();
+        $myFolders = $user
+            ? Folder::where('user_id', $user->id)
+                ->orderBy('name')
+                ->get(['id','name'])
+            : collect();
+
+        // Cartelle dell'utente in cui questo prompt è già presente
+        $attachedFolders = $user
+            ? $prompt->folders()->where('folders.user_id', $user->id)->get(['folders.id','folders.name'])
+            : collect();
+
         return Inertia::render('Prompts/Show', [
             'prompt' => $prompt,
             'allTags' => Tag::orderBy('name')->get(),
@@ -119,6 +132,9 @@ class PromptController extends Controller
             'flash' => [
                 'success' => session('success'),
             ],
+            'myFolders'       => $myFolders,
+            'attachedFolders' => $attachedFolders,
+            'from'            => $request->query('from') // mantiene il ritorno
         ]);
     }
 

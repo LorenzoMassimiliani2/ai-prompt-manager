@@ -192,7 +192,6 @@ const visibleNodes = computed(() => {
 
         <!-- Header: titolo + toggle sidebar su mobile -->
         <div class="flex items-center justify-between mb-3 md:mb-4">
-          <h1 class="text-lg md:text-xl font-semibold text-gray-800">Dashboard</h1>
           <div class="flex items-center gap-2">
             <button
               class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-gray-50"

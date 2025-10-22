@@ -9,7 +9,10 @@ const props = defineProps({
   flash: Object,
   auth: Object,
   comments: Object,
-  services: Array
+  services: Array,
+  myFolders: Array,
+  attachedFolders: Array,
+  from: String
 })
 
 const editMode = ref(false)
@@ -44,7 +47,7 @@ const save = () => {
       editMode.value = false
       // La toast non è necessaria se il controller fa un redirect
       // Ma la lasciamo, male non fa (verrà mostrata nella pagina di destinazione)
-      pushToast('Salvato ✅') 
+      pushToast('Salvato ✅')
     }
   })
 }
@@ -146,16 +149,16 @@ const folder = computed(() => urlParams.value.get('folder'))
 
 // 3. Costruiamo il backUrl in modo condizionale
 const backUrl = computed(() => {
-  
+
   if (from.value === 'dashboard') {
     // Se 'from' è 'dashboard', prepariamo i parametri
     const params = {}
-    
+
     // Aggiungiamo 'folder' ai parametri SOLO se esiste nell'URL
     if (folder.value) {
       params.folder = folder.value
     }
-    
+
     // La rotta sarà 'dashboard' con eventuali parametri (es. { folder: 3 })
     return route('dashboard', params)
   }
@@ -166,8 +169,99 @@ const backUrl = computed(() => {
   }
 
   // Fallback: se 'from' non è presente, torna a una destinazione di default
-  return route('prompts.index') 
+  return route('prompts.index')
 })
+
+// toggle pannello (parte nascosto)
+const folderOpen = ref(false)
+const attachFolderForm = useForm({ folder_id: null })
+
+const attachToFolder = () => {
+  if (!attachFolderForm.folder_id) return
+  attachFolderForm.post(route('prompts.folders.attach', props.prompt.id), {
+    preserveScroll: true,
+    onSuccess: () => {
+      attachFolderForm.reset('folder_id')
+      pushToast('Aggiunto alla cartella ✅')
+      router.reload({ only: ['attachedFolders'] })
+    }
+  })
+}
+
+const detachForm = useForm({})
+const detachFromFolder = (folderId) => {
+  detachForm.delete(route('prompts.folders.detach', { prompt: props.prompt.id, folder: folderId }), {
+    preserveScroll: true,
+    onSuccess: () => {
+      pushToast('Rimosso dalla cartella 🗑️')
+      router.reload({ only: ['attachedFolders'] })
+    }
+  })
+}
+
+// ⭐ mini modal state
+const favOpen = ref(false)
+const favSearch = ref('')
+const favSelected = ref(null)
+const favRemember = ref(false)
+const showAttached = ref(false) // per il blocco collassabile
+
+const LAST_FOLDER_KEY = 'pm:lastFolderId'
+
+// elenco cartelle filtrate (per la modale)
+const favFiltered = computed(() => {
+  const q = favSearch.value.trim().toLowerCase()
+  const base = props.myFolders || []
+  if (!q) return base
+  return base.filter(f => f.name.toLowerCase().includes(q))
+})
+
+function openFav () {
+  // pre-seleziona l’ultima cartella usata (se presente)
+  const last = Number(localStorage.getItem(LAST_FOLDER_KEY) || 0)
+  favSelected.value = last && (props.myFolders || []).some(f => f.id === last) ? last : null
+  favOpen.value = true
+}
+
+function closeFav () {
+  favOpen.value = false
+  favSearch.value = ''
+  // non resetto favSelected per comodità
+}
+
+function confirmFav () {
+  if (!favSelected.value) return
+  attachFolderForm.folder_id = favSelected.value
+  attachToFolder()
+  if (favRemember.value) {
+    localStorage.setItem(LAST_FOLDER_KEY, String(favSelected.value))
+  }
+  closeFav()
+}
+
+// ⭐ gialla se il prompt è in una o più cartelle dell’utente
+const isFaved = computed(() => (props.attachedFolders?.length ?? 0) > 0)
+
+// testo tooltip: elenco cartelle oppure suggerimento
+const favTooltip = computed(() => {
+  return isFaved.value
+    ? (props.attachedFolders || []).map(f => f.name).join(', ')
+    : 'Aggiungi a una tua cartella'
+})
+
+const attachedIds = computed(() => new Set((props.attachedFolders || []).map(f => f.id)))
+
+const isSelectedAttached = computed(() =>
+  !!favSelected.value && attachedIds.value.has(favSelected.value)
+)
+
+function removeFav () {
+  if (!favSelected.value) return
+  // riusa la tua funzione già esistente
+  detachFromFolder(favSelected.value)
+  closeFav()
+}
+
 </script>
 
 <template>
@@ -196,15 +290,30 @@ const backUrl = computed(() => {
             <span>{{ new Date(props.prompt.created_at).toLocaleDateString() }}</span>
           </div>
         </div>
-
         <div class="flex gap-2 shrink-0">
-          <Link
-            :href="backUrl"
-            class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2"
-          >
-            <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-60"><path d="M15 18l-6-6 6-6" fill="currentColor" /></svg>
-            <span>Indietro</span>
+          <Link :href="backUrl" class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2">
+          <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-60">
+            <path d="M15 18l-6-6 6-6" fill="currentColor" />
+          </svg>
+          <span>Indietro</span>
           </Link>
+        <!-- ★ preferiti / aggiungi a cartella (con stato + tooltip al hover) -->
+        <button
+          v-if="myFolders?.length"
+          @click="openFav()"
+          :aria-label="isFaved ? 'Gestisci cartelle del prompt' : 'Aggiungi a cartella'"
+          :class="[
+            'px-2.5 py-2 rounded-xl border bg-white hover:bg-gray-50 transition',
+            isFaved ? 'border-yellow-300 bg-yellow-50' : ''
+          ]"
+        >
+          <svg viewBox="0 0 24 24" class="w-4 h-4"
+              :class="isFaved ? 'text-yellow-500' : 'text-gray-700'">
+            <path fill="currentColor"
+              d="M12 17.3l-5.5 3.2l1.4-6.1L3 9.8l6.2-.5L12 3.5l2.8 5.8l6.2.5l-4.9 4.6l1.4 6.1z"/>
+          </svg>
+        </button>
+          <!-- edit / delete -->
           <button v-if="can?.update" @click="editMode = !editMode"
             class="px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
             {{ editMode ? 'Annulla' : 'Modifica' }}
@@ -219,13 +328,13 @@ const backUrl = computed(() => {
       <!-- quick actions toolbar -->
       <div v-if="!editMode" class="mb-6">
         <div class="bg-white rounded-2xl shadow-sm">
-   
-          
+
+
           <!-- servizi: carosello orizzontale scrollabile -->
           <div class="px-3 sm:px-4 py-3">
-            <div class="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
-              <button
-                @click="copyText((typeof form !== 'undefined' ? form.content : props.prompt.content) || '')"
+            <div
+              class="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
+              <button @click="copyText((typeof form !== 'undefined' ? form.content : props.prompt.content) || '')"
                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-200 border hover:brightness-95 shadow-sm">
                 <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-90">
                   <path
@@ -234,17 +343,15 @@ const backUrl = computed(() => {
                 </svg>
                 <span class="text-sm">Copia prompt</span>
               </button>
-              <button
-                v-for="s in services"
-                :key="s.id"
-                @click="openService(s)"
+              <button v-for="s in services" :key="s.id" @click="openService(s)"
                 class="group flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm">
-                <svg v-if="s.meta?.icon_path" :viewBox="s.meta?.viewBox || '0 0 24 24'" class="w-4 h-4 opacity-80 group-hover:opacity-100">
+                <svg v-if="s.meta?.icon_path" :viewBox="s.meta?.viewBox || '0 0 24 24'"
+                  class="w-4 h-4 opacity-80 group-hover:opacity-100">
                   <path :d="s.meta.icon_path" fill="currentColor" />
                 </svg>
                 <span class="text-sm font-medium">{{ s.name }}</span>
                 <span v-if="s.supports_query"
-                      class="text-[10px] leading-none px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
+                  class="text-[10px] leading-none px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
                   auto
                 </span>
               </button>
@@ -257,14 +364,12 @@ const backUrl = computed(() => {
       <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
         <!-- tags -->
         <div class="px-6 py-4 border-b bg-gray-50 flex flex-wrap items-center gap-2">
-          <span
-            v-for="t in props.prompt.tags"
-            :key="t.id"
+          <span v-for="t in props.prompt.tags" :key="t.id"
             class="text-xs bg-white border border-gray-200 text-gray-700 px-2 py-1 rounded-full">
             #{{ t.name }}
           </span>
         </div>
-
+          
         <div class="p-6">
           <!-- VIEW MODE -->
           <div v-if="!editMode" class="max-w-none">
@@ -276,14 +381,14 @@ const backUrl = computed(() => {
             <div>
               <label class="block text-sm font-medium mb-1">Titolo</label>
               <input v-model="form.title"
-                     class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
               <p v-if="form.errors.title" class="text-sm text-red-600 mt-1">{{ form.errors.title }}</p>
             </div>
 
             <div>
               <label class="block text-sm font-medium mb-1">Prompt</label>
               <textarea v-model="form.content" rows="10"
-                        class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+                class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
               <p v-if="form.errors.content" class="text-sm text-red-600 mt-1">{{ form.errors.content }}</p>
             </div>
 
@@ -299,17 +404,12 @@ const backUrl = computed(() => {
               <div>
                 <label class="block text-sm font-medium mb-1">Tag</label>
                 <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="t in allTags"
-                    :key="t.id"
-                    type="button"
-                    @click="toggleTag(t.id)"
-                    :class="[
-                      'px-2 py-1 rounded-full border text-sm transition',
-                      form.tags.includes(t.id)
-                        ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                    ]">
+                  <button v-for="t in allTags" :key="t.id" type="button" @click="toggleTag(t.id)" :class="[
+                    'px-2 py-1 rounded-full border text-sm transition',
+                    form.tags.includes(t.id)
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ]">
                     #{{ t.name }}
                   </button>
                 </div>
@@ -319,7 +419,7 @@ const backUrl = computed(() => {
 
             <div class="flex items-center gap-3">
               <button @click="save" :disabled="form.processing"
-                      class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
+                class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
                 {{ form.processing ? 'Salvataggio…' : 'Salva' }}
               </button>
               <button @click="editMode = false" class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">
@@ -370,10 +470,10 @@ const backUrl = computed(() => {
         <div v-if="can?.commentCreate" class="p-6 border-b">
           <form @submit.prevent="addComment" class="space-y-3">
             <textarea v-model="cform.body" rows="4" placeholder="Aggiungi un commento…"
-                      class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
             <div class="flex justify-end">
               <button :disabled="cform.processing || !cform.body.trim()"
-                      class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
+                class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
                 Pubblica
               </button>
             </div>
@@ -394,7 +494,7 @@ const backUrl = computed(() => {
               </div>
               <div class="shrink-0 ml-3" v-if="canDeleteComment(c)">
                 <button @click="deleteComment(c)"
-                        class="px-3 py-1 rounded bg-red-600 text-white text-sm">Elimina</button>
+                  class="px-3 py-1 rounded bg-red-600 text-white text-sm">Elimina</button>
               </div>
             </div>
           </div>
@@ -415,11 +515,98 @@ const backUrl = computed(() => {
         <p class="text-sm text-gray-600 mt-1">L’azione non è reversibile.</p>
         <div class="mt-5 flex justify-end gap-2">
           <button @click="confirmOpen = false"
-                  class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Annulla</button>
+            class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Annulla</button>
           <button @click="destroyPrompt" :disabled="form.processing"
-                  class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700">
+            class="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700">
             Elimina
           </button>
+        </div>
+      </div>
+    </div>
+    <!-- Mini modal: aggiungi a cartella -->
+    <div v-if="favOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeFav()"></div>
+
+      <div class="absolute inset-x-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-[420px] top-24
+              bg-white rounded-2xl shadow-2xl border overflow-hidden">
+        <div class="px-4 py-3 border-b flex items-center justify-between">
+          <h3 class="text-sm font-semibold">Aggiungi a cartella</h3>
+          <button @click="closeFav()" class="px-2 py-1 rounded-lg bg-gray-100">✕</button>
+        </div>
+
+        <div class="p-3 space-y-2">
+          <!-- ricerca -->
+          <div class="relative">
+            <input v-model="favSearch" placeholder="Cerca cartella…"
+              class="w-full border rounded-xl pl-9 pr-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-200">
+            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5A6.5 6.5 0 1 0 9.5 16a6.47 6.47 0 0 0 4.23-1.57l.27.28h.79L20 20.5L21.5 19L15.5 14Z" />
+            </svg>
+          </div>
+
+          <!-- elenco cartelle -->
+          <div class="max-h-64 overflow-auto rounded-xl border">
+            <button
+              v-for="f in favFiltered"
+              :key="f.id"
+              @click="favSelected = f.id"
+              class="w-full text-left px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-50"
+              :class="[
+                favSelected === f.id ? 'bg-indigo-50' : '',
+                attachedIds.has(f.id) ? 'bg-yellow-50/60' : ''
+              ]"
+            >
+              <span class="truncate flex items-center gap-2">
+                <!-- spunta se già presente -->
+                <svg v-if="attachedIds.has(f.id)" viewBox="0 0 24 24" class="w-4 h-4 text-yellow-600 shrink-0">
+                  <path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/>
+                </svg>
+                <span :class="attachedIds.has(f.id) ? 'text-gray-800' : ''">{{ f.name }}</span>
+                <span v-if="attachedIds.has(f.id)" class="text-[11px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 border border-yellow-200">
+                  già presente
+                </span>
+              </span>
+
+              <span class="text-xs text-gray-400">#{{ f.id }}</span>
+            </button>
+
+            <div v-if="!favFiltered.length" class="px-3 py-6 text-center text-sm text-gray-500">
+              Nessuna cartella trovata.
+            </div>
+          </div>
+
+
+         <!-- azioni -->
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 text-xs text-gray-600">
+            <input type="checkbox" v-model="favRemember" class="rounded">
+            Ricorda scelta
+          </label>
+          <div class="flex items-center gap-2">
+            <button @click="closeFav()"
+              class="px-3 py-1.5 rounded-xl border bg-white hover:bg-gray-50 text-sm">Annulla</button>
+
+            <!-- Se la cartella selezionata contiene già il prompt: mostra RIMUOVI -->
+            <button
+              v-if="isSelectedAttached"
+              @click="removeFav()"
+              :disabled="attachFolderForm.processing"
+              class="px-3 py-1.5 rounded-xl bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50">
+              Rimuovi
+            </button>
+
+            <!-- Altrimenti mostra AGGIUNGI -->
+            <button
+              v-else
+              @click="confirmFav()"
+              :disabled="!favSelected || attachFolderForm.processing"
+              class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-50">
+              Aggiungi
+            </button>
+          </div>
+        </div>
+
         </div>
       </div>
     </div>
