@@ -105,29 +105,26 @@ const backUrl = computed(() => {
   <div class="min-h-screen bg-gray-50">
     <div class="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
-      <!-- Header -->
-      <div class="flex items-center justify-between">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">
             {{ isEdit ? 'Modifica Prompt' : 'Crea un nuovo Prompt' }}
           </h1>
-          <p class="text-sm text-gray-600 mt-1">
+          <p class="text-sm text-gray-600 mt-1 max-w-lg">
             Scrivi il testo del prompt, scegli visibilità e tag. Mantieni il testo chiaro e riutilizzabile.
           </p>
         </div>
         <Link
           :href="backUrl"
-          class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2"
+          class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2 shrink-0"
         >
           <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-60"><path d="M15 18l-6-6 6-6" fill="currentColor" /></svg>
-          <span>Indietro</span>
+          <span class="hidden sm:inline">Indietro</span>
         </Link>
       </div>
 
-      <!-- Card -->
       <form @submit.prevent="submit" class="bg-white rounded-2xl shadow-sm border overflow-hidden">
 
-        <!-- Title + Visibility -->
         <div class="p-6 border-b grid md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
             <label class="block text-sm font-medium mb-1">Titolo</label>
@@ -141,22 +138,22 @@ const backUrl = computed(() => {
 
           <div>
             <label class="block text-sm font-medium mb-1">Visibilità</label>
-            <div class="grid grid-cols-3 gap-2">
+            <div class="flex flex-wrap gap-2">
               <button type="button"
                 @click="form.visibility='private'"
-                :class="['px-2 py-2 rounded-xl border text-sm',
+                :class="['px-2 py-2 rounded-xl border text-sm flex-1',
                   form.visibility==='private' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white']">
                 Privato
               </button>
               <button type="button"
                 @click="form.visibility='public'"
-                :class="['px-2 py-2 rounded-xl border text-sm',
+                :class="['px-2 py-2 rounded-xl border text-sm flex-1',
                   form.visibility==='public' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white']">
                 Pubblico
               </button>
               <button type="button"
                 @click="form.visibility='unlisted'"
-                :class="['px-2 py-2 rounded-xl border text-sm',
+                :class="['px-2 py-2 rounded-xl border text-sm flex-1',
                   form.visibility==='unlisted' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white']">
                 Link
               </button>
@@ -165,7 +162,6 @@ const backUrl = computed(() => {
           </div>
         </div>
 
-        <!-- Content -->
         <div class="p-6">
           <label class="block text-sm font-medium mb-1">Prompt</label>
           <textarea
@@ -181,25 +177,21 @@ const backUrl = computed(() => {
           <p v-if="form.errors.content" class="text-sm text-red-600 mt-1">{{ form.errors.content }}</p>
         </div>
 
-        <!-- Tags -->
         <div class="px-6 pb-6">
           <label class="block text-sm font-medium mb-1">Tag</label>
 
-        <!-- Ricerca/aggiunta rapida solo per superuser -->
-        <div v-if="props.can?.manageTags" class="flex gap-2 mb-3">
-            <input v-model="tagQuery" placeholder="Cerca o scrivi per creare…"
-                class="flex-1 border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
-            <button type="button" @click="createTagQuick"
-                    class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">Aggiungi</button>
-        </div>
+          <div v-if="props.can?.manageTags" class="flex flex-col sm:flex-row gap-2 mb-3">
+              <input v-model="tagQuery" placeholder="Cerca o scrivi per creare…"
+                  class="flex-1 border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+              <button type="button" @click="createTagQuick"
+                      class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">Aggiungi</button>
+          </div>
 
-        <!-- Se non superuser: solo filtro tag esistenti -->
-        <div v-else class="mb-3">
-            <input v-model="tagQuery" placeholder="Filtra tag…"
-                class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
-        </div>
+          <div v-else class="mb-3">
+              <input v-model="tagQuery" placeholder="Filtra tag…"
+                  class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+          </div>
 
-          <!-- Lista tag selezionabili -->
           <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded-xl bg-gray-50">
             <button
               v-for="t in filteredTags"
@@ -218,15 +210,14 @@ const backUrl = computed(() => {
           <p v-if="form.errors.tags" class="text-sm text-red-600 mt-1">{{ form.errors.tags }}</p>
         </div>
 
-        <!-- Sticky actions -->
-        <div class="border-t bg-white/90 backdrop-blur supports-[backdrop-filter]:sticky supports-[backdrop-filter]:bottom-0 p-4 flex items-center justify-between">
-          <div class="text-sm text-gray-500">
+        <div class="border-t bg-white/90 backdrop-blur supports-[backdrop-filter]:sticky supports-[backdrop-filter]:bottom-0 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="text-sm text-gray-500 text-center sm:text-left">
             <span v-if="isEdit">Stai modificando il prompt #{{ props.prompt.id }}</span>
             <span v-else>Crea un nuovo prompt</span>
           </div>
-          <div class="flex gap-2">
-            <Link :href="route('prompts.index')" class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Annulla</Link>
-            <button :disabled="form.processing" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60">
+          <div class="flex gap-2 w-full sm:w-auto">
+            <Link :href="route('prompts.index')" class="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50 flex-1 sm:flex-none flex justify-center">Annulla</Link>
+            <button :disabled="form.processing" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 flex-1 sm:flex-none">
               {{ form.processing ? 'Salvataggio…' : (isEdit ? 'Salva modifiche' : 'Crea prompt') }}
             </button>
           </div>

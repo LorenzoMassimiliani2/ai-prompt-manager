@@ -182,15 +182,13 @@ const visibleNodes = computed(() => {
 
 <template>
   <AuthenticatedLayout>
-    <!-- Tipografia più grande e padding ridotti -->
     <Head title="Dashboard" />
     <div class="min-h-screen bg-gray-50 text-[15px] md:text-base">
       <div class="max-w-screen-2xl mx-auto px-3 md:px-6 py-4 md:py-6">
-        <div v-if="toast" class="fixed top-3 right-3 bg-black text-white px-3 py-2 rounded-lg shadow">
+        <div v-if="toast" class="fixed top-3 right-3 bg-black text-white px-3 py-2 rounded-lg shadow z-50">
           {{ toast }}
         </div>
 
-        <!-- Header: titolo + toggle sidebar su mobile -->
         <div class="flex items-center justify-between mb-3 md:mb-4">
           <div class="flex items-center gap-2">
             <button
@@ -203,7 +201,6 @@ const visibleNodes = computed(() => {
         </div>
 
         <div class="grid grid-cols-12 gap-4 md:gap-6">
-          <!-- sidebar albero -->
           <aside
             :class="[
               'col-span-12 lg:col-span-4',
@@ -220,7 +217,6 @@ const visibleNodes = computed(() => {
                 </div>
               </div>
 
-              <!-- creare nuova cartella -->
               <div class="flex items-center gap-2 mb-3">
                 <input v-model="createForm.name" placeholder="Nuova cartella…"
                        class="flex-1 border rounded-lg px-3 py-2 text-sm md:text-[15px]" />
@@ -230,28 +226,25 @@ const visibleNodes = computed(() => {
                 </button>
               </div>
 
-              <!-- lista piatta dei nodi visibili -->
               <div class="space-y-0.5">
                 <div
                   v-for="row in visibleNodes"
                   :key="row.node.id"
                   class="select-none">
-                  <div class="flex items-center justify-between group py-1.5">
+                  <div class="flex items-center justify-between py-1.5">
                     <div class="flex items-center gap-1 min-w-0"
-                         :style="{ paddingLeft: (row.level * 14) + 'px' }">
-                      <!-- caret -->
+                         :style="{ paddingLeft: (row.level * 20) + 'px' }"> 
                       <button
                         class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100"
                         @click="toggle(row.node.id)"
                         :aria-label="isOpen(row.node.id) ? 'Chiudi' : 'Apri'">
                         <svg v-if="row.node.children?.length" viewBox="0 0 24 24" class="w-4 h-4 text-gray-500">
-                          <path v-if="isOpen(row.node.id)" d="M19 13H5v-2h14v2z" fill="currentColor"/>
-                          <path v-else d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" fill="currentColor"/>
+                          <path v-if="isOpen(row.node.id)" d="M7 10l5 5 5-5z" fill="currentColor"/>
+                          <path v-else d="M10 7l5 5-5 5z" fill="currentColor"/>
                         </svg>
                         <span v-else class="inline-block w-4 h-4"></span>
                       </button>
 
-                      <!-- label -->
                       <button class="text-left truncate flex-1 text-[15px] md:text-base hover:underline"
                               @click="openFolder(row.node.id)">
                         📁 {{ row.node.name }}
@@ -259,22 +252,20 @@ const visibleNodes = computed(() => {
                       </button>
                     </div>
 
-                    <!-- azioni del nodo -->
-                    <div class="opacity-0 group-hover:opacity-100 transition flex items-center gap-1">
-                      <button class="text-[11px] md:text-xs px-2 py-0.5 rounded bg-gray-100"
-                              @click="expandNodeAndChildren(row.node.id)" title="Espandi discendenti">↘︎</button>
-                      <button class="text-[11px] md:text-xs px-2 py-0.5 rounded bg-gray-100"
-                              @click="collapseNodeAndChildren(row.node.id)" title="Compatta discendenti">↙︎</button>
-                      <button class="text-[11px] md:text-xs px-2 py-0.5 rounded bg-gray-100"
-                              @click="renameFolder(row.node)">Rinomina</button>
-                      <button class="text-[11px] md:text-xs px-2 py-0.5 rounded bg-red-600 text-white"
-                              @click="deleteFolder(row.node)">Elimina</button>
+                    <div class="transition flex items-center gap-1">
+                      <button class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200"
+                              @click="renameFolder(row.node)" title="Rinomina">
+                        <svg class="w-4 h-4 text-gray-600" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83l3.75 3.75l1.83-1.83z"/></svg>
+                      </button>
+                      <button class="w-6 h-6 flex items-center justify-center rounded hover:bg-red-100"
+                              @click="deleteFolder(row.node)" title="Elimina">
+                        <svg class="w-4 h-4 text-red-600" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <!-- rename bar -->
               <div v-if="renameForm.id" class="mt-4 p-3 bg-gray-50 rounded-xl border">
                 <div class="text-xs text-gray-500 mb-1">Rinomina cartella</div>
                 <div class="flex gap-2">
@@ -286,11 +277,10 @@ const visibleNodes = computed(() => {
             </div>
           </aside>
 
-          <!-- contenuto cartella -->
-          <main class="col-span-12 md:col-span-8">
+          <main class="col-span-12 lg:col-span-8">
             <div class="bg-white border rounded-2xl shadow-sm">
               <div class="px-3 md:px-5 py-3 md:py-4 border-b">
-                <div class="flex items-start justify-between gap-3">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
                   <div>
                     <h2 class="text-base md:text-lg font-semibold">
                       {{ current ? `${current.name}` : 'Nessuna cartella selezionata' }}
@@ -300,17 +290,16 @@ const visibleNodes = computed(() => {
                     </p>
                   </div>
 
-                  <!-- Toggle azioni (partono nascoste) -->
                   <div v-if="current" class="flex flex-wrap items-center gap-2">
                     <button
                       class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 text-sm"
                       @click="showCreateSubfolder = !showCreateSubfolder">
-                      {{ showCreateSubfolder ? 'Nascondi sottocartella' : 'Nuova sottocartella' }}
+                      {{ showCreateSubfolder ? 'Nascondi' : 'Sottocartella' }}
                     </button>
                     <button
                       class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 text-sm"
                       @click="showAttachPrompt = !showAttachPrompt">
-                      {{ showAttachPrompt ? 'Nascondi aggiungi prompt' : 'Aggiungi prompt' }}
+                      {{ showAttachPrompt ? 'Nascondi' : 'Aggiungi' }}
                     </button>
 
                     <Link
@@ -322,7 +311,6 @@ const visibleNodes = computed(() => {
                   </div>
                 </div>
 
-                <!-- Form "Nuova sottocartella" (toggle) -->
                 <div v-if="current && showCreateSubfolder" class="mt-3">
                   <div class="flex flex-col sm:flex-row sm:items-center gap-2">
                     <input
@@ -339,7 +327,6 @@ const visibleNodes = computed(() => {
                 </div>
               </div>
 
-              <!-- attach rapido: aggiungi i tuoi prompt alla cartella (toggle) -->
               <div v-if="current && showAttachPrompt" class="px-3 md:px-5 py-3 border-b bg-gray-50">
                 <div class="flex flex-wrap items-center gap-3 justify-between">
                   <div class="flex items-center gap-2">
@@ -366,12 +353,12 @@ const visibleNodes = computed(() => {
                 </div>
               </div>
 
-              <!-- lista prompt nella cartella -->
               <div class="p-3 md:p-5" v-if="current">
                 <div v-if="current.prompts?.length" class="divide-y rounded-xl border">
-                  <div v-for="p in current.prompts" :key="p.id" class="flex items-center justify-between px-3 py-3 md:px-4">
+                  <div v-for="p in current.prompts" :key="p.id" 
+                       class="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 px-3 py-3 md:px-4">
                     <div class="min-w-0">
-                      <Link :href="route('prompts.show', { prompt: p.id, from: 'dashboard', folder: current.id })" class="font-medium truncate">
+                      <Link :href="route('prompts.show', { prompt: p.id, from: 'dashboard', folder: current.id })" class="font-medium truncate hover:underline">
                         {{ p.title }}
                       </Link>
                       <div class="text-[13px] md:text-sm text-gray-500 mt-1 truncate">
@@ -379,10 +366,6 @@ const visibleNodes = computed(() => {
                       </div>
                     </div>
                     <div class="shrink-0 flex items-center gap-2">
-                      <Link :href="route('prompts.show', { prompt: p.id, from: 'dashboard', folder: current.id })"
-                            class="text-xs md:text-[13px] px-2 py-1 rounded bg-gray-100">
-                        Apri
-                      </Link>
                       <button @click="detachPromptFromCurrent(p.id)"
                               class="text-xs md:text-[13px] px-2 py-1 rounded bg-red-600 text-white">
                         Rimuovi

@@ -277,7 +277,7 @@ function removeFav () {
 
     <div class="max-w-4xl mx-auto px-4 py-8">
       <!-- header -->
-      <div class="flex items-start justify-between mb-4">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 gap-3">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">{{ form.title }}</h1>
           <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600">
@@ -290,12 +290,12 @@ function removeFav () {
             <span>{{ new Date(props.prompt.created_at).toLocaleDateString() }}</span>
           </div>
         </div>
-        <div class="flex gap-2 shrink-0">
+        <div class="flex flex-wrap gap-2 shrink-0">
           <Link :href="backUrl" class="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 flex items-center gap-2">
           <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-60">
             <path d="M15 18l-6-6 6-6" fill="currentColor" />
           </svg>
-          <span>Indietro</span>
+          <span class="hidden sm:inline">Indietro</span>
           </Link>
         <!-- ★ preferiti / aggiungi a cartella (con stato + tooltip al hover) -->
         <button
@@ -331,32 +331,33 @@ function removeFav () {
 
 
           <!-- servizi: carosello orizzontale scrollabile -->
-          <div class="px-3 sm:px-4 py-3">
+            <div class="px-3 sm:px-4 py-3">
             <div
-              class="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
+              class="grid grid-cols-2 sm:flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent pb-1">
               <button @click="copyText((typeof form !== 'undefined' ? form.content : props.prompt.content) || '')"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-200 border hover:brightness-95 shadow-sm">
-                <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-90">
-                  <path
-                    d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12zM20 5H8a2 2 0 0 0-2 2v14h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12z"
-                    fill="currentColor" />
-                </svg>
-                <span class="text-sm">Copia prompt</span>
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-200 border hover:brightness-95 shadow-sm">
+              <svg viewBox="0 0 24 24" class="w-4 h-4 opacity-90">
+                <path
+                d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12zM20 5H8a2 2 0 0 0-2 2v14h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h12z"
+                fill="currentColor" />
+              </svg>
+              <span class="text-sm sm:inline hidden">Copia prompt</span>
+              <span class="text-sm sm:hidden">Copia</span>
               </button>
               <button v-for="s in services" :key="s.id" @click="openService(s)"
-                class="group flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm">
-                <svg v-if="s.meta?.icon_path" :viewBox="s.meta?.viewBox || '0 0 24 24'"
-                  class="w-4 h-4 opacity-80 group-hover:opacity-100">
-                  <path :d="s.meta.icon_path" fill="currentColor" />
-                </svg>
-                <span class="text-sm font-medium">{{ s.name }}</span>
-                <span v-if="s.supports_query"
-                  class="text-[10px] leading-none px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
-                  auto
-                </span>
+              class="group flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 shadow-sm">
+              <svg v-if="s.meta?.icon_path" :viewBox="s.meta?.viewBox || '0 0 24 24'"
+                class="w-4 h-4 opacity-80 group-hover:opacity-100">
+                <path :d="s.meta.icon_path" fill="currentColor" />
+              </svg>
+              <span class="text-sm font-medium">{{ s.name }}</span>
+              <span v-if="s.supports_query"
+                class="text-[10px] leading-none px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
+                auto
+              </span>
               </button>
             </div>
-          </div>
+            </div>
         </div>
       </div>
 
@@ -509,7 +510,7 @@ function removeFav () {
     </div>
 
     <!-- modal conferma delete -->
-    <div v-if="confirmOpen" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+    <div v-if="confirmOpen" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <h3 class="text-lg font-semibold">Eliminare questo prompt?</h3>
         <p class="text-sm text-gray-600 mt-1">L’azione non è reversibile.</p>
